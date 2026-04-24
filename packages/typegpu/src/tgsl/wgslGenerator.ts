@@ -36,7 +36,11 @@ import {
 } from './generationHelpers.ts';
 import { accessIndex } from './accessIndex.ts';
 import { accessProp } from './accessProp.ts';
-import type { ShaderGenerator } from './shaderGenerator.ts';
+import type {
+  ShaderGenerator,
+  FunctionDefinitionOptions,
+  VariableDefinitionOptions,
+} from './shaderGenerator.ts';
 import { resolveData } from '../core/resolve/resolveData.ts';
 import { createPtrFromOrigin, implicitFrom, ptrFn } from '../data/ptr.ts';
 import { _ref, RefOperator } from '../data/ref.ts';
@@ -50,10 +54,6 @@ import type { ExternalMap } from '../core/resolve/externals.ts';
 import * as forOfUtils from './forOfUtils.ts';
 import { isTgpuRange } from '../std/range.ts';
 import { stringifyNode } from '../shared/tseynit.ts';
-import type {
-  FunctionDefinitionOptions,
-  VariableDefinitionOptions,
-} from './shaderGenerator_members.ts';
 import { getAttributesString } from '../data/attributes.ts';
 import type { VariableScope } from '../core/variable/tgpuVariable.ts';
 
