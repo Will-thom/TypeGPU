@@ -278,7 +278,7 @@ describe('fluid with atomics example', () => {
         (*remainingWater) -= flow;
       }
 
-      fn simulateCell(x: u32, y: u32, _arg_2: u32) {
+      fn wrappedCallback(x: u32, y: u32, _arg_2: u32) {
         var coord = vec2u(x, y);
         if (handleCellFlags(coord)) {
           return;
@@ -298,7 +298,7 @@ describe('fluid with atomics example', () => {
         if (any(id >= sizeUniform)) {
           return;
         }
-        simulateCell(id.x, id.y, id.z);
+        wrappedCallback(id.x, id.y, id.z);
       }
 
       struct fullScreenTriangle_Output {
@@ -349,11 +349,11 @@ describe('fluid with atomics example', () => {
         return currentWater[getIndex(coord)];
       }
 
-      struct fragment_Input {
+      struct FragmentIn {
         @location(0) uv: vec2f,
       }
 
-      @fragment fn fragment(_arg_0: fragment_Input) -> @location(0) vec4f {
+      @fragment fn fragment(_arg_0: FragmentIn) -> @location(0) vec4f {
         var coord = coordFromUv(_arg_0.uv);
         let flags_1 = getFlags(coord);
         if ((flags_1 == CELL_WALL)) {
