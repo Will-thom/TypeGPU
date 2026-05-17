@@ -1051,7 +1051,8 @@ export class ResolutionCtxImpl implements ResolutionCtx {
     }
 
     throw new WgslTypeError(
-      `Value ${safeStringify(item)} is not resolvable${schema ? ` to type ${safeStringify(schema)}` : ''
+      `Value ${safeStringify(item)} is not resolvable${
+        schema ? ` to type ${safeStringify(schema)}` : ''
       }`,
     );
   }
