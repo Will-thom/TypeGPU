@@ -86,12 +86,6 @@ export function isUsableAsUniform<T extends TgpuBuffer<BaseData>>(
 // Implementation
 // --------------
 
-const usageToVarTemplateMap: Record<BindableBufferUsage, string> = {
-  uniform: 'uniform',
-  mutable: 'storage, read_write',
-  readonly: 'storage, read',
-};
-
 class TgpuFixedBufferImpl<TData extends BaseData, TUsage extends BindableBufferUsage>
   implements TgpuBufferUsage<TData, TUsage>, SelfResolvable, TgpuFixedBufferUsage<TData>
 {
@@ -123,10 +117,16 @@ class TgpuFixedBufferImpl<TData extends BaseData, TUsage extends BindableBufferU
       this.usage === 'uniform' ? { uniform: dataType } : { storage: dataType, access: this.usage },
       this.buffer,
     );
-    const usage = usageToVarTemplateMap[this.usage];
 
     ctx.addDeclaration(
-      `@group(${group}) @binding(${binding}) var<${usage}> ${id}: ${ctx.resolve(dataType).value};`,
+      ctx.gen.globalVarDefinition({
+        scope: this.usage,
+        name: id,
+        dataType,
+        group: group,
+        binding: binding,
+        init: undefined,
+      }),
     );
 
     return snip(id, dataType, isNaturallyEphemeral(dataType) ? 'runtime' : this.usage);
@@ -243,12 +243,16 @@ export class TgpuLaidOutBufferImpl<TData extends BaseData, TUsage extends Bindab
   [$resolve](ctx: ResolutionCtx): ResolvedSnippet {
     const id = ctx.makeUniqueIdentifier(getName(this), 'global');
     const group = ctx.allocateLayoutEntry(this.#membership.layout);
-    const usage = usageToVarTemplateMap[this.usage];
 
     ctx.addDeclaration(
-      `@group(${group}) @binding(${this.#membership.idx}) var<${usage}> ${id}: ${
-        ctx.resolve(this.dataType).value
-      };`,
+      ctx.gen.globalVarDefinition({
+        scope: this.usage,
+        name: id,
+        dataType: this.dataType,
+        group: group,
+        binding: this.#membership.idx,
+        init: undefined,
+      }),
     );
 
     return snip(id, this.dataType, isNaturallyEphemeral(this.dataType) ? 'runtime' : this.usage);

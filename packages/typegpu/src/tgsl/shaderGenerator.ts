@@ -1,7 +1,10 @@
 import type { BaseData } from '../data/wgslTypes.ts';
 import type { GenerationCtx } from './generationHelpers.ts';
 import type { ResolvedSnippet, Snippet } from '../data/snippet.ts';
-import type { FunctionDefinitionOptions } from './shaderGenerator_members.ts';
+import type {
+  FunctionDefinitionOptions,
+  VariableDefinitionOptions,
+} from './shaderGenerator_members.ts';
 
 /**
  * **NOTE: This is an unstable API and may change in the future.**
@@ -12,7 +15,10 @@ import type { FunctionDefinitionOptions } from './shaderGenerator_members.ts';
 export interface ShaderGenerator {
   initGenerator(ctx: GenerationCtx): void;
 
+  globalConstDefinition(id: string, schema: BaseData, init: Snippet): string;
+  globalVarDefinition(options: VariableDefinitionOptions): string;
   functionDefinition(options: FunctionDefinitionOptions): string;
+
   typeInstantiation(schema: BaseData, args: readonly Snippet[]): ResolvedSnippet;
   typeAnnotation(schema: BaseData): string;
 }

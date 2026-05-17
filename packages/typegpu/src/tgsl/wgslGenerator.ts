@@ -20,7 +20,12 @@ import { $gpuCallable, $internal, $providing, isMarkedInternal } from '../shared
 import { safeStringify } from '../shared/stringify.ts';
 import { pow } from '../std/numeric.ts';
 import { add, div, mul, neg, sub } from '../std/operators.ts';
-import { isGPUCallable, isKnownAtComptime, type DualFn } from '../types.ts';
+import {
+  isGPUCallable,
+  isKnownAtComptime,
+  type BindableBufferUsage,
+  type DualFn,
+} from '../types.ts';
 import { convertStructValues, convertToCommonType, tryConvertSnippet } from './conversion.ts';
 import {
   ArrayExpression,
@@ -45,8 +50,12 @@ import type { ExternalMap } from '../core/resolve/externals.ts';
 import * as forOfUtils from './forOfUtils.ts';
 import { isTgpuRange } from '../std/range.ts';
 import { stringifyNode } from '../shared/tseynit.ts';
-import type { FunctionDefinitionOptions } from './shaderGenerator_members.ts';
+import type {
+  FunctionDefinitionOptions,
+  VariableDefinitionOptions,
+} from './shaderGenerator_members.ts';
 import { getAttributesString } from '../data/attributes.ts';
+import type { VariableScope } from '../core/variable/tgpuVariable.ts';
 
 const { NodeTypeCatalog: NODE } = tinyest;
 
@@ -191,6 +200,14 @@ const binaryOpCodeToCodegen = {
   '/': div[$gpuCallable].call.bind(div),
   '**': pow[$gpuCallable].call.bind(pow),
 } satisfies Partial<Record<tinyest.BinaryOperator, (...args: never[]) => unknown>>;
+
+const usageToVarTemplateMap: Record<VariableScope | BindableBufferUsage, string> = {
+  private: 'private',
+  workgroup: 'workgroup',
+  uniform: 'uniform',
+  mutable: 'storage, read_write',
+  readonly: 'storage, read',
+};
 
 export class WgslGenerator implements ShaderGenerator {
   #ctx: GenerationCtx | undefined = undefined;
@@ -874,6 +891,30 @@ ${this.ctx.pre}}`;
     }
 
     assertExhaustive(expression);
+  }
+
+  public globalConstDefinition(id: string, schema: wgsl.BaseData, init: Snippet): string {
+    const resolvedDataType = this.ctx.resolve(schema).value;
+    const resolvedValue = this.ctx.resolveSnippet(init).value;
+
+    return `const ${id}: ${resolvedDataType} = ${resolvedValue};`;
+  }
+
+  public globalVarDefinition(options: VariableDefinitionOptions): string {
+    let pre = `var<${usageToVarTemplateMap[options.scope]}> ${options.name}: ${this.ctx.resolve(options.dataType).value}`;
+
+    if (options.binding !== undefined) {
+      pre = `@binding(${options.binding}) ` + pre;
+    }
+
+    if (options.group !== undefined) {
+      pre = `@group(${options.group}) ` + pre;
+    }
+
+    if (options.init) {
+      return `${pre} = ${this.ctx.resolveSnippet(options.init).value};`;
+    }
+    return `${pre};`;
   }
 
   public functionDefinition(options: FunctionDefinitionOptions): string {
