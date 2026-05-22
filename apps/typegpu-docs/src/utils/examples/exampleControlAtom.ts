@@ -35,6 +35,7 @@ export type VectorSliderControlParam<T extends d.v2f | d.v3f | d.v4f> = {
 export type ColorPickerControlParam = {
   onColorChange: (newValue: d.v3f) => void;
   initial: d.v3f;
+  multiplier?: number;
   label: string;
 };
 

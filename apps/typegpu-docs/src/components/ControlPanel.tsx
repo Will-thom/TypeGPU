@@ -18,7 +18,7 @@ import { TextArea } from './design/TextArea.tsx';
 import { Toggle } from './design/Toggle.tsx';
 import { VectorSlider } from './design/VectorSlider.tsx';
 import { FPSCounter } from './FpsCounter.tsx';
-import type { d } from 'typegpu';
+import { d } from 'typegpu';
 
 function ToggleRow({
   label,
@@ -127,13 +127,17 @@ function VectorSliderRow<T extends d.v2f | d.v3f | d.v4f>({
 function ColorPickerRow({
   label,
   initial,
+  multiplier = 1,
   onChange,
 }: {
   label: string;
   initial: d.v3f;
+  multiplier?: number;
   onChange: (value: d.v3f) => void;
 }) {
-  const [value, setValue] = useState<d.v3f>(initial);
+  const [value, setValue] = useState<d.v3f>(
+    d.vec3f(initial[0], initial[1], initial[2]).div(multiplier),
+  );
   const runWithCatch = useSetAtom(runWithCatchAtom);
 
   return (
@@ -144,7 +148,9 @@ function ColorPickerRow({
         value={value}
         onChange={(newValue) => {
           setValue(newValue);
-          void runWithCatch(() => onChange(newValue));
+          void runWithCatch(() =>
+            onChange(d.vec3f(newValue[0], newValue[1], newValue[2]).mul(multiplier)),
+          );
         }}
       />
     </>
@@ -260,6 +266,7 @@ function paramToControlRow(param: ExampleControlParam) {
       label={param.label}
       onChange={param.onColorChange}
       initial={param.initial}
+      multiplier={param.multiplier}
     />
   ) : 'onButtonClick' in param ? (
     <ButtonRow key={param.label} label={param.label} onClick={param.onButtonClick} />
