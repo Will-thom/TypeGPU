@@ -24,6 +24,9 @@
   },
   "type": "module",
   "sideEffects": false,
+  "bin": {
+    "tgpu": "./bin.mjs"
+  },
   "exports": {
     "./package.json": "./package.json",
     ".": {
@@ -77,7 +80,7 @@
     "types": "./dist/index.d.ts"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && cp bin.mjs dist/bin.mjs",
     "test:types": "pnpm tsc --p ./tsconfig.test.json --noEmit",
     "prepublishOnly": "tgpu-dev-cli prepack"
   },
