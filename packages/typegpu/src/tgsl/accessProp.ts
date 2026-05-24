@@ -2,9 +2,9 @@ import { stitch } from '../core/resolve/stitch.ts';
 import { AutoStruct } from '../data/autoStruct.ts';
 import { EntryInputRouter } from '../core/function/entryInputRouter.ts';
 import { isUnstruct, MatrixColumnsAccess, undecorate, UnknownData } from '../data/dataTypes.ts';
-import { abstractInt, bool, f16, f32, i32, u32 } from '../data/numeric.ts';
+import { bool, f16, f32, i32, u32 } from '../data/numeric.ts';
 import { derefSnippet } from '../data/ref.ts';
-import { isEphemeralSnippet, isSnippet, snip, type Snippet } from '../data/snippet.ts';
+import { isSnippet, snip, type Snippet } from '../data/snippet.ts';
 import {
   vec2b,
   vec2f,
@@ -25,15 +25,14 @@ import {
 import {
   type BaseData,
   isMat,
-  isNaturallyEphemeral,
   isPtr,
   isVec,
   isWgslArray,
   isWgslStruct,
 } from '../data/wgslTypes.ts';
 import { isKnownAtComptime } from '../types.ts';
-import { coerceToSnippet } from './generationHelpers.ts';
 import { InfixDispatch, infixOperators, type InfixOperatorName } from './infixDispatch.ts';
+import { coerceToSnippet, numericLiteralToSnippet } from './generationHelpers.ts';
 
 const infixKinds = [
   'vec2f',
@@ -92,20 +91,35 @@ const swizzleLenToType: Record<SwizzleableType, Record<SwizzleLength, BaseData>>
 export function accessProp(target: Snippet, propName: string): Snippet | undefined {
   if (infixKinds.includes((target.dataType as BaseData).type) && propName in infixOperators) {
     const operator = infixOperators[propName as InfixOperatorName];
-    return snip(new InfixDispatch(target, operator), UnknownData, /* origin */ target.origin);
+    return snip(
+      new InfixDispatch(target, operator),
+      UnknownData,
+      /* origin */ target.origin,
+      target.possibleSideEffects,
+    );
   }
 
   if (isWgslArray(target.dataType) && propName === 'length') {
     if (target.dataType.elementCount === 0) {
       // Dynamically-sized array
-      return snip(stitch`arrayLength(&${target})`, u32, /* origin */ 'runtime');
+      return snip(
+        stitch`arrayLength(&${target})`,
+        u32,
+        /* origin */ 'runtime',
+        target.possibleSideEffects,
+      );
     }
 
-    return snip(target.dataType.elementCount, abstractInt, /* origin */ 'constant');
+    return numericLiteralToSnippet(target.dataType.elementCount);
   }
 
   if (isMat(target.dataType) && propName === 'columns') {
-    return snip(new MatrixColumnsAccess(target), UnknownData, /* origin */ target.origin);
+    return snip(
+      new MatrixColumnsAccess(target),
+      UnknownData,
+      /* origin */ target.origin,
+      target.possibleSideEffects,
+    );
   }
 
   if (isWgslStruct(target.dataType) || isUnstruct(target.dataType)) {
@@ -118,13 +132,8 @@ export function accessProp(target: Snippet, propName: string): Snippet | undefin
     return snip(
       stitch`${target}.${propName}`,
       propType,
-      /* origin */ target.origin === 'argument'
-        ? 'argument'
-        : !isEphemeralSnippet(target) && !isNaturallyEphemeral(propType)
-          ? target.origin
-          : target.origin === 'constant' || target.origin === 'constant-tgpu-const-ref'
-            ? 'constant'
-            : 'runtime',
+      /* origin */ target.origin,
+      target.possibleSideEffects,
     );
   }
 
@@ -133,7 +142,12 @@ export function accessProp(target: Snippet, propName: string): Snippet | undefin
     if (!result) {
       return undefined;
     }
-    return snip(stitch`${target}.${result.prop}`, result.type, 'argument');
+    return snip(
+      stitch`${target}.${result.prop}`,
+      result.type,
+      'argument',
+      target.possibleSideEffects,
+    );
   }
 
   if (target.dataType instanceof EntryInputRouter) {
@@ -163,7 +177,8 @@ export function accessProp(target: Snippet, propName: string): Snippet | undefin
   if (isVec(target.dataType)) {
     // Example: d.vec3f().kind === 'vec3f'
     if (propName === 'kind') {
-      return snip(target.dataType.type, UnknownData, 'constant');
+      // The snippet has no side-effects
+      return snip(target.dataType.type, UnknownData, 'constant', /* possibleSideEffects */ false);
     }
   }
 
@@ -189,11 +204,12 @@ export function accessProp(target: Snippet, propName: string): Snippet | undefin
         : stitch`${target}.${propName}`,
       swizzleType,
       // Swizzling creates new vectors (unless they're on the lhs of an assignment, but that's not yet supported in WGSL)
-      /* origin */ target.origin === 'argument' && propLength === 1
-        ? 'argument'
-        : target.origin === 'constant' || target.origin === 'constant-tgpu-const-ref'
+      /* origin */ propLength === 1
+        ? target.origin
+        : target.origin === 'constant' || target.origin === 'constant-immutable-def'
           ? 'constant'
           : 'runtime',
+      target.possibleSideEffects,
     );
   }
 

@@ -40,7 +40,7 @@ import type {
   BlockScopeLayer,
   ExecMode,
   ExecState,
-  FnToWgslOptions,
+  ResolveFunctionOptions,
   FunctionArgumentAccess,
   FunctionScopeLayer,
   ItemLayer,
@@ -532,7 +532,7 @@ export class ResolutionCtxImpl implements ResolutionCtx {
     return this.#logGenerator.logResources;
   }
 
-  fnToWgsl(options: FnToWgslOptions): { code: string; returnType: BaseData } {
+  resolveFunction(options: ResolveFunctionOptions): { code: string; returnType: BaseData } {
     try {
       const scope = this._itemStateStack.pushFunctionScope(
         options.functionType,
@@ -573,7 +573,7 @@ export class ResolutionCtxImpl implements ResolutionCtx {
           // Create named arg snippets, then a proxy for property access routing.
           const proxyEntries: Array<{ schemaKey: string; arg: FunctionArgumentAccess }> = [];
           for (const a of positionalArgs) {
-            const argName = this.makeUniqueIdentifier(`_arg_${a.schemaKey}`, 'block');
+            const argName = this.makeUniqueIdentifier(a.schemaKey, 'block');
             const arg = createArgument(argName, a.type);
             args.push(arg);
             proxyEntries.push({ schemaKey: a.schemaKey, arg: arg.access });
@@ -655,6 +655,8 @@ export class ResolutionCtxImpl implements ResolutionCtx {
 
       const code = this.gen.functionDefinition({
         functionType: options.functionType,
+        name: options.name,
+        workgroupSize: options.workgroupSize,
         args,
         body: options.body,
         determineReturnType: () => {
@@ -790,7 +792,9 @@ export class ResolutionCtxImpl implements ResolutionCtx {
       setName(item, name);
       return callback();
     } finally {
-      setName(item, oldName);
+      if (oldName) {
+        setName(item, oldName);
+      }
     }
   }
 
