@@ -59,9 +59,11 @@ export function comptime<T extends (...args: never[]) => unknown>(func: T): Tgpu
       }
 
       ctx.pushMode(new NormalState());
-      const result = coerceToSnippet(func(...(args.map((s) => s.value) as never[])));
-      ctx.popMode();
-      return result;
+      try {
+        return coerceToSnippet(func(...(args.map((s) => s.value) as never[])));
+      } finally {
+        ctx.popMode();
+      }
     },
   };
   impl.$name = (label: string) => {

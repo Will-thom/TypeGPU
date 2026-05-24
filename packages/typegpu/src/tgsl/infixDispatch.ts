@@ -46,7 +46,7 @@ export function isInfixDispatch(o: unknown): o is InfixDispatch {
 }
 
 /**
- * This function is used on vex/mat prototypes.
+ * This function is used on vec/mat prototypes.
  * This is done in runtime in order to avoid a circular dependency.
  */
 export function assignInfixOperator<T extends typeof VecBase | typeof MatBase>(
